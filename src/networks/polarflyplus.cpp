@@ -310,9 +310,6 @@ void PolarFlyplusNew::InsertRandomFaults( const Configuration &config )
     for ( int i = 0; i < num_fails; i++ ) {
       int failnode = RandomInt( _size - 1 );
       fault_nodes[failnode] = true;
-      for(int j = 0 ; j < Polarflyport+Hypercubeport+1 ; j++){
-         fault_table[failnode][j]=true;
-      }
       for(int j = 0; j <  Hypercubeport + Polarflyport ; j++){
          int pairnode=-1;
 	 int pairport=-1;

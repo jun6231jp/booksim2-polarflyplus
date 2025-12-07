@@ -35,7 +35,7 @@
 #include "misc_utils.hpp"
 #include "globals.hpp"
 
-#define DRAGON_LATENCY
+//#define DRAGON_LATENCY
 
 int gP, gA, gG;
 

@@ -41,13 +41,11 @@
 #include "polarfly_tables.hpp"
 int Hypercube_port;
 int Polarfly_port;
-int threshold;
 TrafficManager * TrafficManager::New(Configuration const & config,
                                      vector<Network *> const & net)
 {
     Hypercube_port = config.GetInt("k");
     Polarfly_port = config.GetInt("n");
-    threshold = config.GetInt("sim_count") * config.GetInt("packet_size"); //??
 
     TrafficManager * result = NULL;
     string sim_type = config.GetStr("sim_type");
@@ -554,19 +552,6 @@ TrafficManager::TrafficManager( const Configuration &config, const vector<Networ
         _sent_packets[c].resize(_nodes, 0);
         _accepted_packets[c].resize(_nodes, 0);
         _sent_flits[c].resize(_nodes, 0);
-        _hop_stats[c] = new Stats( this, tmp_name.str( ), 1.0, 20 );
-        _stats[tmp_name.str()] = _hop_stats[c];
-        tmp_name.str("");
-
-        if(_pair_stats){
-            _pair_plat[c].resize(_nodes*_nodes);
-            _pair_nlat[c].resize(_nodes*_nodes);
-            _pair_flat[c].resize(_nodes*_nodes);
-        }
-
-        _sent_packets[c].resize(_nodes, 0);
-        _accepted_packets[c].resize(_nodes, 0);
-        _sent_flits[c].resize(_nodes, 0);
         _accepted_flits[c].resize(_nodes, 0);
 
 #ifdef TRACK_STALLS
@@ -778,7 +763,7 @@ void TrafficManager::_RetireFlit( Flit *f, int dest )
 int TrafficManager::_IssuePacket( int source, int cl )
 {
     int result = 0;
-    if(_use_read_write[cl]){ //use read and write : batch mode
+    if(_use_read_write[cl]){ //use read and write
         //check queue for waiting replies.
         //check to make sure it is on time yet
         if (!_repliesPending[source].empty()) {
@@ -796,7 +781,7 @@ int TrafficManager::_IssuePacket( int source, int cl )
                 _requestsOutstanding[source]++;
             }
         }
-    } else { //normal mode : Injection mode
+    } else { //normal mode
         result = _injection_process[cl]->test(source) ? 1 : 0;
         _requestsOutstanding[source]++;
     } 
@@ -813,13 +798,11 @@ void TrafficManager::_GeneratePacket( int source, int stype,
     assert(stype!=0);
     Flit::FlitType packet_type = Flit::ANY_TYPE;
     int size = _GetNextPacketSize(cl); //input size 
-    //int pid = _cur_pid++;
-    //assert(_cur_pid);
+    int pid = _cur_pid++;
+    assert(_cur_pid);
     int packet_destination = _traffic_pattern[cl]->dest(source);
     if (fault_nodes[source]){return;}
     if (fault_nodes[packet_destination]){return;}
-    int pid = _cur_pid++;
-    assert(_cur_pid);
     cout << "TrafficManager GeneratePacket id:" << pid << " source:" << source << " type:" << stype << " class:" << cl << " time:" << time << " dest:" << packet_destination << endl;
     bool record = false;
     bool watch = gWatchOut && (_packets_to_watch.count(pid) > 0);
@@ -949,13 +932,9 @@ void TrafficManager::_GeneratePacket( int source, int stype,
 }
 
 void TrafficManager::_Inject(){
-    int packet_chk[_nodes]={0};
-    int complete=0;
-    while(complete==0){
+
     for ( int input = 0; input < _nodes; ++input ) {
-        //get step
-        int step=(_net[0]->GetRouter(input))->step_cal(threshold);
-	for ( int c = 0; c < _classes; ++c ) {
+        for ( int c = 0; c < _classes; ++c ) {
             // Potentially generate packets for any (input,class)
             // that is currently empty
 	
@@ -982,12 +961,6 @@ void TrafficManager::_Inject(){
                 }
             }
         }
-    }
-    int sum=0;
-    for ( int input = 0; input < _nodes; ++input ) {
-       sum += packet_chk[input];
-    }
-    if(sum==_nodes){complete=1;}
     }
 }
 

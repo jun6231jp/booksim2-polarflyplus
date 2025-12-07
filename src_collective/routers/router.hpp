@@ -1,0 +1,306 @@
+// $Id$
+
+/*
+ Copyright (c) 2007-2015, Trustees of The Leland Stanford Junior University
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions are met:
+
+ Redistributions of source code must retain the above copyright notice, this 
+ list of conditions and the following disclaimer.
+ Redistributions in binary form must reproduce the above copyright notice, this
+ list of conditions and the following disclaimer in the documentation and/or
+ other materials provided with the distribution.
+
+ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE 
+ DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+#ifndef _ROUTER_HPP_
+#define _ROUTER_HPP_
+#include <string>
+#include <vector>
+
+#include "timed_module.hpp"
+#include "flit.hpp"
+#include "credit.hpp"
+#include "flitchannel.hpp"
+#include "channel.hpp"
+#include "config_utils.hpp"
+#include "collective.hpp"
+#include "polarfly_tables.hpp"
+
+typedef Channel<Credit> CreditChannel;
+
+class Router : public TimedModule {
+
+protected:
+
+  static int const STALL_BUFFER_BUSY;
+  static int const STALL_BUFFER_CONFLICT;
+  static int const STALL_BUFFER_FULL;
+  static int const STALL_BUFFER_RESERVED;
+  static int const STALL_CROSSBAR_CONFLICT;
+
+  int _id;
+  
+  int _inputs;
+  int _outputs;
+  
+  int _classes;
+
+  int _input_speedup;
+  int _output_speedup;
+  
+  double _internal_speedup;
+  double _partial_internal_cycles;
+
+  int _crossbar_delay;
+  int _credit_delay;
+  
+  //mutable int _step_tx=0;
+  //mutable int _step_rx=0;
+  //mutable int _rx_counter[max_step]={0};
+  //mutable int _tx_counter=0;
+
+  mutable int _step_tx[72]={0}; //max 72 nic
+  mutable int _step_rx[72]={0};
+  mutable int _rx_counter[72][max_step]={0};
+  mutable int _tx_counter[72]={0};
+
+  vector<FlitChannel *>   _input_channels;
+  vector<CreditChannel *> _input_credits;
+  vector<FlitChannel *>   _output_channels;
+  vector<CreditChannel *> _output_credits;
+  vector<bool>            _channel_faults;
+
+#ifdef TRACK_FLOWS
+  vector<vector<int> > _received_flits;
+  vector<vector<int> > _stored_flits;
+  vector<vector<int> > _sent_flits;
+  vector<vector<int> > _outstanding_credits;
+  vector<vector<int> > _active_packets;
+#endif
+
+#ifdef TRACK_STALLS
+  vector<int> _buffer_busy_stalls;
+  vector<int> _buffer_conflict_stalls;
+  vector<int> _buffer_full_stalls;
+  vector<int> _buffer_reserved_stalls;
+  vector<int> _crossbar_conflict_stalls;
+#endif
+
+  virtual void _InternalStep() = 0;
+
+public:
+  Router( const Configuration& config,
+	  Module *parent, const string & name, int id,
+	  int inputs, int outputs );
+  
+  static Router *NewRouter( const Configuration& config,
+			    Module *parent, const string & name, int id,
+			    int inputs, int outputs );
+
+  virtual void AddInputChannel( FlitChannel *channel, CreditChannel *backchannel );
+  virtual void AddOutputChannel( FlitChannel *channel, CreditChannel *backchannel );
+ 
+  inline FlitChannel * GetInputChannel( int input ) const {
+    assert((input >= 0) && (input < _inputs));
+    return _input_channels[input];
+  }
+  inline FlitChannel * GetOutputChannel( int output ) const {
+    assert((output >= 0) && (output < _outputs));
+    return _output_channels[output];
+  }
+
+  virtual void ReadInputs( ) = 0;
+  virtual void Evaluate( );
+  virtual void WriteOutputs( ) = 0;
+
+  void OutChannelFault( int c, bool fault = true );
+  bool IsFaultyOutput( int c ) const;
+
+  inline int GetID( ) const { return _id;}
+
+//----------------------collective pattern---------------------
+/*
+  int step_cal ( ) const {
+	  if(_step_rx > _step_tx){ return _step_tx;}
+	  else{ return _step_rx;}
+  }
+  bool step_chk(int threshold){
+     if(_tx_counter < threshold){
+       return true;
+     }
+     if(_step_rx >= _step_tx){
+        return true;
+     }
+
+     return false;
+  }
+  void rx_count ( int step, int threshold ) const {
+    _rx_counter[step]++;
+    while(_rx_counter[_step_rx] >= threshold){
+       _step_rx++;
+    }
+  }
+  void tx_count (int step , int threshold) const {
+    if(_step_tx == step) _tx_counter++;
+    if(_tx_counter == threshold){_step_tx++; _tx_counter=0;}
+  }
+  int Get_rx_step () const{ return _step_rx; }
+  int Get_tx_step () const{ return _step_tx; }
+  void step_reset () const{
+    _step_rx=0;
+    _step_tx=0;
+    for (int i = 0 ; i < max_step; i++){_rx_counter[i]=0;}
+    _tx_counter=0;
+  }
+  void step_txreset () const{
+    _step_tx=0;
+    _tx_counter=0;
+  }
+  void step_rxreset () const{
+    _step_rx=0;
+    for (int i = 0 ; i < max_step; i++){_rx_counter[i]=0;}
+  }
+  */
+  int step_cal (int nic) const {
+          if(_step_rx[nic] > _step_tx[nic]){ return _step_tx[nic];}
+          else{ return _step_rx[nic];}
+  }
+  bool step_chk(int threshold, int nic){
+     if(_tx_counter[nic] < threshold){
+       return true;
+     }
+     if(_step_rx[nic] >= _step_tx[nic]){
+        return true;
+     }
+
+     return false;
+  }
+  void rx_count ( int step, int threshold, int nic ) const {
+    _rx_counter[nic][step]++;
+    while(_rx_counter[nic][_step_rx[nic]] >= threshold){
+       _step_rx[nic]++;
+    }
+  }
+  void tx_count (int step , int threshold, int nic) const {
+    if(_step_tx[nic] == step) _tx_counter[nic]++;
+    if(_tx_counter[nic] == threshold){_step_tx[nic]++; _tx_counter[nic]=0;}
+  }
+  int Get_rx_step (int nic) const{ return _step_rx[nic]; }
+  int Get_tx_step (int nic) const{ return _step_tx[nic]; }
+  void step_reset (int nic) const{
+    _step_rx[nic]=0;
+    _step_tx[nic]=0;
+    for (int i = 0 ; i < max_step; i++){_rx_counter[nic][i]=0;}
+    _tx_counter[nic]=0;
+  }
+  void step_txreset (int nic) const{
+    _step_tx[nic]=0;
+    _tx_counter[nic]=0;
+  }
+  void step_rxreset (int nic) const{
+    _step_rx[nic]=0;
+    for (int i = 0 ; i < max_step; i++){_rx_counter[nic][i]=0;}
+  }
+  int Get_min_step ( ) const {
+     int minstep=max_step;
+     for (int i = 0; i < 72; i++){
+        if((this->step_cal(i) < minstep) && (this->step_cal(i) > 0)){
+	  minstep = this->step_cal(i);
+	}
+     }
+     return minstep;
+  }
+  //--------------------------------------------------------------
+
+  virtual int GetUsedCredit(int o) const = 0;
+  virtual int GetBufferOccupancy(int i) const = 0;
+
+#ifdef TRACK_BUFFERS
+  virtual int GetUsedCreditForClass(int output, int cl) const = 0;
+  virtual int GetBufferOccupancyForClass(int input, int cl) const = 0;
+#endif
+
+#ifdef TRACK_FLOWS
+  inline vector<int> const & GetReceivedFlits(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _received_flits[c];
+  }
+  inline vector<int> const & GetStoredFlits(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _stored_flits[c];
+  }
+  inline vector<int> const & GetSentFlits(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _sent_flits[c];
+  }
+  inline vector<int> const & GetOutstandingCredits(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _outstanding_credits[c];
+  }
+
+  inline vector<int> const & GetActivePackets(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _active_packets[c];
+  }
+
+  inline void ResetFlowStats(int c) {
+    assert((c >= 0) && (c < _classes));
+    _received_flits[c].assign(_received_flits[c].size(), 0);
+    _sent_flits[c].assign(_sent_flits[c].size(), 0);
+  }
+#endif
+
+  virtual vector<int> UsedCredits() const = 0;
+  virtual vector<int> FreeCredits() const = 0;
+  virtual vector<int> MaxCredits() const = 0;
+
+#ifdef TRACK_STALLS
+  inline int GetBufferBusyStalls(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _buffer_busy_stalls[c];
+  }
+  inline int GetBufferConflictStalls(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _buffer_conflict_stalls[c];
+  }
+  inline int GetBufferFullStalls(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _buffer_full_stalls[c];
+  }
+  inline int GetBufferReservedStalls(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _buffer_reserved_stalls[c];
+  }
+  inline int GetCrossbarConflictStalls(int c) const {
+    assert((c >= 0) && (c < _classes));
+    return _crossbar_conflict_stalls[c];
+  }
+
+  inline void ResetStallStats(int c) {
+    assert((c >= 0) && (c < _classes));
+    _buffer_busy_stalls[c] = 0;
+    _buffer_conflict_stalls[c] = 0;
+    _buffer_full_stalls[c] = 0;
+    _buffer_reserved_stalls[c] = 0;
+    _crossbar_conflict_stalls[c] = 0;
+  }
+#endif
+
+  inline int NumInputs() const {return _inputs;}
+  inline int NumOutputs() const {return _outputs;}
+};
+
+#endif

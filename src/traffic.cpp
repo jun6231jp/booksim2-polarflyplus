@@ -69,10 +69,7 @@ TrafficPattern * TrafficPattern::New(string const & pattern, int nodes,
     result = new BitCompTrafficPattern(nodes);
   } else if(pattern_name == "transpose") {
     result = new TransposeTrafficPattern(nodes);
-  } else if (pattern_name == "pairwise") {
-	  result = new PairwiseTrafficPattern(nodes);
-  }
-  else if(pattern_name == "bitrev") {
+  } else if(pattern_name == "bitrev") {
     result = new BitRevTrafficPattern(nodes);
   } else if(pattern_name == "shuffle") {
     result = new ShuffleTrafficPattern(nodes);
@@ -250,17 +247,6 @@ int TransposeTrafficPattern::dest(int source)
   int const mask_lo = (1 << _shift) - 1;
   int const mask_hi = mask_lo << _shift;
   return (((source >> _shift) & mask_lo) | ((source << _shift) & mask_hi));
-}
-
-PairwiseTrafficPattern::PairwiseTrafficPattern(int nodes)
-  : SteppedTrafficPattern(nodes)
-{
-}
-
-int PairwiseTrafficPattern::dest(int source, int step)
-{
-  assert((source >= 0) && (source < _nodes));
-  return (source ^ (1 << step));
 }
 
 BitRevTrafficPattern::BitRevTrafficPattern(int nodes)

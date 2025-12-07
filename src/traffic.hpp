@@ -41,17 +41,9 @@ protected:
 public:
   virtual ~TrafficPattern() {}
   virtual void reset();
-  virtual int dest(int source) = 0;  // 基本の dest は source のみを受け取る
+  virtual int dest(int source) = 0;
   static TrafficPattern * New(string const & pattern, int nodes, 
 			      Configuration const * const config = NULL);
-};
-
-// step を使用する特殊なパターン用のインターフェース
-class SteppedTrafficPattern : public TrafficPattern {
-public:
-  SteppedTrafficPattern(int nodes) : TrafficPattern(nodes) {}
-  virtual int dest(int source) override { return dest(source, 0); }  // デフォルトの実装
-  virtual int dest(int source, int step) = 0;  // step を使用する実装用
 };
 
 class PermutationTrafficPattern : public TrafficPattern {
@@ -67,7 +59,7 @@ protected:
 class BitCompTrafficPattern : public BitPermutationTrafficPattern {
 public:
   BitCompTrafficPattern(int nodes);
-  virtual int dest(int source) override;
+  virtual int dest(int source);
 };
 
 class TransposeTrafficPattern : public BitPermutationTrafficPattern {
@@ -75,25 +67,19 @@ protected:
   int _shift;
 public:
   TransposeTrafficPattern(int nodes);
-  virtual int dest(int source) override;
-};
-
-class PairwiseTrafficPattern : public SteppedTrafficPattern {
-public:
-  PairwiseTrafficPattern(int nodes);
-  virtual int dest(int source, int step) override;
+  virtual int dest(int source);
 };
 
 class BitRevTrafficPattern : public BitPermutationTrafficPattern {
 public:
   BitRevTrafficPattern(int nodes);
-  virtual int dest(int source) override;
+  virtual int dest(int source);
 };
 
 class ShuffleTrafficPattern : public BitPermutationTrafficPattern {
 public:
   ShuffleTrafficPattern(int nodes);
-  virtual int dest(int source) override;
+  virtual int dest(int source);
 };
 
 class DigitPermutationTrafficPattern : public PermutationTrafficPattern {
