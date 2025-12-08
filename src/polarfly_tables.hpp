@@ -1,10 +1,18 @@
 #ifndef _POLARFLY_TABLES_HPP_
 #define _POLARFLY_TABLES_HPP_
 
+//#define PFP_DEBUG // trafficmanager
+//#define DEBUG_DRAIN // trafficmanager
+//#define PFP_MAP_DEBUG // trafficmanager
+//#define PFP_NET_DEBUG // network
+//#define PFP_FAULT_DEBUG // network
+//#define PFP_ROUTING_DEBUG // routefunc
+//#define PFP_ROUTER_DEBUG // router
+
 //#define USE_TABLE_7x3
 //#define USE_TABLE_13x4 
-//#define USE_TABLE_31x6
-#define USE_TABLE_57x8
+#define USE_TABLE_31x6
+//#define USE_TABLE_57x8
 
 void initializeFaultTable();
 void updateFaultTable(int row, int col, bool value);

@@ -803,7 +803,9 @@ void TrafficManager::_GeneratePacket( int source, int stype,
     int packet_destination = _traffic_pattern[cl]->dest(source);
     if (fault_nodes[source]){return;}
     if (fault_nodes[packet_destination]){return;}
+#ifdef PFP_DEBUG
     cout << "TrafficManager GeneratePacket id:" << pid << " source:" << source << " type:" << stype << " class:" << cl << " time:" << time << " dest:" << packet_destination << endl;
+#endif
     bool record = false;
     bool watch = gWatchOut && (_packets_to_watch.count(pid) > 0);
     if(_use_read_write[cl]){
@@ -976,8 +978,10 @@ void TrafficManager::_Step( )
     }
 
     vector<map<int, Flit *> > flits(_subnets);
+#ifdef PFP_DEBUG
     cout << "TrafficManager Step() sim state " << _sim_state << endl;
-   for ( int subnet = 0; subnet < _subnets; ++subnet ) {
+#endif
+    for ( int subnet = 0; subnet < _subnets; ++subnet ) {
         for ( int n = 0; n < _nodes; ++n ) {
             Flit * const f = _net[subnet]->ReadFlit( n );
             if ( f ) {
@@ -1255,8 +1259,10 @@ void TrafficManager::_Step( )
 #ifdef TRACK_FLOWS
                 ++_ejected_flits[f->cl][n];
 #endif
+#ifdef PFP_DEBUG
                 cout << "TrafficManager Step() Inject RetireFlit id:"<< f->pid << " f->src:" << f->src << " f->dest:" << f->dest << " dest:" << n << " VC:" << f->vc << endl;	
-                _RetireFlit(f, n);
+#endif
+		_RetireFlit(f, n);
             }
         }
         flits[subnet].clear();
@@ -1433,8 +1439,10 @@ bool TrafficManager::_SingleSim( )
     
         for ( int iter = 0; iter < _sample_period; ++iter )
 	{
+#ifdef PFP_DEBUG
 	       cout << "TrafficManager SingleSim() step" << iter << endl;	
-		_Step( );
+#endif
+	       _Step( );
 	}
     
         //cout << _sim_state << endl;
@@ -1637,13 +1645,17 @@ bool TrafficManager::Run( )
         _sim_state    = warming_up;
   
         _ClearStats( );
+#ifdef PFP_DEBUG
         cout << "TrafficManager Run() clear status" << endl;
-        for(int c = 0; c < _classes; ++c) {
+#endif 
+	for(int c = 0; c < _classes; ++c) {
             _traffic_pattern[c]->reset();
             _injection_process[c]->reset();
         }
+#ifdef PFP_DEBUG
         cout << "TrafficManager Run() injection reset" << endl;
-        if ( !_SingleSim( ) ) {
+#endif
+	if ( !_SingleSim( ) ) {
             cout << "Simulation unstable, ending ..." << endl;
             return false;
         }
@@ -2168,6 +2180,8 @@ void TrafficManager::DisplayOverallStats( ostream & os ) const {
            << "Crossbar conflict stall rate = " << (double)_overall_crossbar_conflict_stalls[c] / (double)_total_sims
            << " (" << _total_sims << " samples)" << endl;
 #endif
+
+#ifdef PFP_MAP_DEBUG
     for(int i = 0 ; i < POLARFLY_TABLE_ROWS*(1<<Hypercube_port); i++ ){
      	cout << "##node" << i << " : ";
         for(int j = 0; j <= Hypercube_port + Polarfly_port; j++) {
@@ -2178,7 +2192,7 @@ void TrafficManager::DisplayOverallStats( ostream & os ) const {
             cout << traffic_table[i][j] << " " ;
         } cout << endl;
    }
-   
+#endif
     }
   
 }

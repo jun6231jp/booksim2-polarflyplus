@@ -269,13 +269,14 @@ void PolarFlyplusNew::_BuildNet( const Configuration &config )
     }
 
   }
-
+#ifdef PFP_NET_DEBUG
   for(int i = 0; i < ch_count; i++){
      for(int j = 0 ; j < 4; j++){
          cout << dbg[i][j] << " ";
      } cout << endl;
   }
   cout<<"Done links"<<endl;
+#endif
 }
 
 void PolarFlyplusNew::InsertRandomFaults( const Configuration &config )
@@ -336,6 +337,7 @@ void PolarFlyplusNew::InsertRandomFaults( const Configuration &config )
     
     RestoreRandomState( save_x, save_u );
   }
+#ifdef PFP_FAULT_DEBUG
   for(int i = 0 ; i < Polarflysize*(1<<Hypercubeport); i++){
      cout << "fault node:" << i << " ";
      if(!fault_nodes[i]){cout << "O";}
@@ -349,6 +351,7 @@ void PolarFlyplusNew::InsertRandomFaults( const Configuration &config )
         else {cout << "X";}
       }cout << endl;
    }
+#endif
 }
 
 double PolarFlyplusNew::Capacity( ) const

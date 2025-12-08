@@ -299,7 +299,9 @@ bool IQRouter::_ReceiveFlits( )
   for(int input = 0; input < _inputs; ++input) { 
     Flit * const f = _input_channels[input]->Receive();
     if(f) {
-      cout << "IQrouter Receive flits router:" << this->GetID() << " id:" << f->pid << " src:" << f->src << " dest:" << f->dest << " vc:" << f->vc << endl;
+#ifdef PFP_ROUTER_DEBUG
+      	    cout << "IQrouter Receive flits router:" << this->GetID() << " id:" << f->pid << " src:" << f->src << " dest:" << f->dest << " vc:" << f->vc << endl;
+#endif
 #ifdef TRACK_FLOWS
       ++_received_flits[f->cl][input];
 #endif
