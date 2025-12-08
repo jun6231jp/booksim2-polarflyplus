@@ -181,5 +181,6 @@ In the config file, set the following parameter.
 link_failures = 1;
 fail_seed=time;
 ```
+The "link_failures" define the number of failure nodes in the network.
 
 
